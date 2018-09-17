@@ -1,8 +1,8 @@
-/* 
+/*
  * Main source code file for lsh shell program
  *
  * You are free to add functions to this file.
- * If you want to add functions in a separate file 
+ * If you want to add functions in a separate file
  * you will need to modify Makefile to compile
  * your additional functions.
  *
@@ -10,15 +10,17 @@
  * easier for us while grading your assignment.
  *
  * Submit the entire lab1 folder as a tar archive (.tgz).
- * Command to create submission archive: 
+ * Command to create submission archive:
       $> tar cvf lab1.tgz lab1/
  *
- * All the best 
+ * All the best
  */
 
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <syscall.h>
+#include <unistd.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "parse.h"
@@ -30,6 +32,7 @@
 void PrintCommand(int, Command *);
 void PrintPgm(Pgm *);
 void stripwhite(char *);
+void RunCommand(Command *);
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
@@ -67,9 +70,14 @@ int main(void)
         /* execute it */
         n = parse(line, &cmd);
         PrintCommand(n, &cmd);
+        if(n){
+          RunCommand(&cmd);
+        }else{
+          printf("Invalid command, %d returned by parser\n", n);
+        }
       }
     }
-    
+
     if(line) {
       free(line);
     }
@@ -133,7 +141,7 @@ stripwhite (char *string)
   while (isspace( string[i] )) {
     i++;
   }
-  
+
   if (i) {
     strcpy (string, string + i);
   }
@@ -144,4 +152,32 @@ stripwhite (char *string)
   }
 
   string [++i] = '\0';
+}
+
+void
+RunCommand(Command *cmd)
+{
+  Pgm *p = cmd->pgm;
+  char **pl = p->pgmlist;
+  char dir[80] = "";
+  char pgmstr[256] = "";
+  printf("%s\n", *pl);
+  if(!strcmp(*pl, "cd"))
+  {
+    *pl++;
+    sprintf(dir, "%s", *pl++);
+    printf("Changing dir to: %s \n", dir);
+
+    if(chdir(dir) == -1)
+    {
+      printf("failed to change dir to %s\n", dir);
+    }
+  }
+  else
+  {
+    while (*pl) {
+      sprintf(pgmstr, "%s %s", pgmstr, *pl++);
+    }
+    system(pgmstr);
+  }
 }

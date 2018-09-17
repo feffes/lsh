@@ -1,5 +1,5 @@
 /* This file contains the code for parser used to parse the input
- * given to shell program. You shouldn't need to modify this 
+ * given to shell program. You shouldn't need to modify this
  * file */
 
 #include <stdio.h>
@@ -36,11 +36,11 @@ parse (char *buf, Command *c)
   char *tok;
 
   init();
-  /*c->rstdin    = NULL;
+  c->rstdin    = NULL;
   c->rstdout   = NULL;
   c->rstderr   = NULL;
-  c->background = 0; 
-  c->pgm       = NULL;*/
+  c->background = 0; // False
+  c->pgm       = NULL;
 
 newcmd:
   if ((n = acmd(t, &cmd0)) <= 0) {
