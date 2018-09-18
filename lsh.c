@@ -184,7 +184,11 @@ RunCommand(Command *cmd)
         printf("\nfailure, errno: %d\n", errno);
       }
     }else{
-      wait(NULL);
+      if(cmd->background == 1){
+        printf("running %s in background \n", *pl);
+      }else{
+        wait(NULL);
+      }
     }
   }
 }
