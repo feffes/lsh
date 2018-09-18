@@ -26,6 +26,10 @@
 #include <readline/history.h>
 #include "parse.h"
 
+#define READ_END 0
+#define WRITE_END 1
+#define BUFFER_S 256
+
 /*
  * Function declarations
  */
@@ -162,6 +166,9 @@ RunCommand(Command *cmd)
   Pgm *p = cmd->pgm; // Handle several pgms in case of piping
   char **pl = p->pgmlist;
   char dir[80] = "";
+  int fd[2];
+  int pipe_open=0;
+
   if(!strcmp(*pl, "cd"))
   {
     *pl++;
@@ -175,20 +182,56 @@ RunCommand(Command *cmd)
   }
   else
   {
-    //run command
-    pid_t pid = fork();
-    if(pid == 0){
-      if(execvp(pl[0], pl) != -1){
-        printf("sucess\n");
-      }else{
-        printf("\nfailure, errno: %d\n", errno);
+    while(p){
+      if(p->next){
+        printf("Opening pipe for command: %s \n", *pl);
+        // we have another command to run
+        // create pipe
+        if(pipe(fd) == -1){
+          fprintf(stderr, "Pipe Failed\n");
+          return;
+        }else{
+          pipe_open = 1;
+        }
       }
-    }else{
-      if(cmd->background == 1){
-        printf("running %s in background \n", *pl);
+      //run command
+      pid_t pid = fork();
+      // debug
+      //int pid = 0;
+      if(pid == 0){
+        if(p->next){
+          printf("Redirecting pipe to stdin for %s\n", *pl);
+          close(fd[WRITE_END]);
+          // redirect READ_END of pipe to stdin
+          dup2(0, fd[READ_END]);
+          close(fd[READ_END]);
+        }else if(pipe_open==1){
+          printf("Redirecting stdout to pipe for %s\n", *pl);
+          printf("ASDASD");
+
+          close(fd[READ_END]);
+          // redirect stdout to WRITE_END of pipe
+          dup2(fd[WRITE_END], 1);
+          close(fd[WRITE_END]);
+          pipe_open = 0;
+        }
+        //child
+        printf("Running command %s .. \n", *pl);
+        if(execvp(pl[0], pl) != -1){
+          printf("sucess\n");
+        }else{
+          printf("\nfailure, errno: %d\n", errno);
+        }
       }else{
-        wait(NULL);
+        //parent
+        if(cmd->background == 1){
+          printf("running %s in background \n", *pl);
+        }else if(pipe_open == 0){
+          wait(NULL);
+        }
       }
+      p = p->next;
+      pl = p->pgmlist;
     }
   }
 }
