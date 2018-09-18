@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <syscall.h>
 #include <unistd.h>
+#include <errno.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "parse.h"
@@ -36,6 +37,7 @@ void RunCommand(Command *);
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
+const char *PATH[] = {"/usr/bin:/bin", NULL};
 
 /*
  * Name: main
@@ -157,11 +159,9 @@ stripwhite (char *string)
 void
 RunCommand(Command *cmd)
 {
-  Pgm *p = cmd->pgm;
+  Pgm *p = cmd->pgm; // Handle several pgms in case of piping
   char **pl = p->pgmlist;
   char dir[80] = "";
-  char pgmstr[256] = "";
-  printf("%s\n", *pl);
   if(!strcmp(*pl, "cd"))
   {
     *pl++;
@@ -175,9 +175,16 @@ RunCommand(Command *cmd)
   }
   else
   {
-    while (*pl) {
-      sprintf(pgmstr, "%s %s", pgmstr, *pl++);
+    //run command
+    pid_t pid = fork();
+    if(pid == 0){
+      if(execvp(pl[0], pl) != -1){
+        printf("sucess\n");
+      }else{
+        printf("\nfailure, errno: %d\n", errno);
+      }
+    }else{
+      wait(NULL);
     }
-    system(pgmstr);
   }
 }
