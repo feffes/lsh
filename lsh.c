@@ -38,6 +38,8 @@ void PrintCommand(int, Command *);
 void PrintPgm(Pgm *);
 void stripwhite(char *);
 void RunCommand(Command *);
+void RunCommandRec(Command *);
+void RunSingleCommand(Pgm *, int, int);
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
@@ -77,7 +79,7 @@ int main(void)
         n = parse(line, &cmd);
         PrintCommand(n, &cmd);
         if(n){
-          RunCommand(&cmd);
+          RunCommandRec(&cmd);
         }else{
           printf("Invalid command, %d returned by parser\n", n);
         }
@@ -161,6 +163,74 @@ stripwhite (char *string)
 }
 
 void
+RunCommandRec(Command *cmd)
+{
+  Pgm *p = cmd->pgm; // Handle several pgms in case of piping
+  RunSingleCommand(p, 0, 1);
+}
+
+void
+RunSingleCommand(Pgm *p, int fdin, int fdout)
+{
+  // args[0] will be command
+  char **args=p->pgmlist;
+  char dir[80] = "";
+  int fd[2];
+  int pipe_open=0;
+
+  if(!strcmp(*args, "cd"))
+  {
+    *args++;
+    sprintf(dir, "%s", *args++);
+    printf("Changing dir to: %s \n", dir);
+
+    if(chdir(dir) == -1)
+    {
+      printf("failed to change dir to %s\n", dir);
+    }
+  }else{
+    if(p->next){
+      // we have another command to run
+      // create pipe
+      if(pipe(fd) == -1){
+        fprintf(stderr, "Pipe Failed\n");
+        return;
+      }else{
+        pipe_open = 1;
+      }
+    }
+    //run command
+    pid_t pid = fork();
+    // debug
+    //int pid = 0;
+    if(pid == 0)
+    {
+      //child
+      if(p->next != NULL)
+      {
+        close(fd[WRITE_END]);
+        // redirect READ_END of pipe to stdin
+        dup2(fd[READ_END], 0);
+        close(fd[READ_END]);
+      }
+      //send output (stdout) to fdout
+      dup2(fdout, 1);
+
+      if(execvp(args[0], args) == -1)
+      {
+        printf("\nfailure, errno: %d\n", errno);
+      }
+    }
+    if(p->next){
+      RunSingleCommand(p->next, fd[READ_END], fd[WRITE_END]);
+      close(fd[WRITE_END]);
+    }
+    wait(NULL);
+  }
+}
+
+
+void
 RunCommand(Command *cmd)
 {
   Pgm *p = cmd->pgm; // Handle several pgms in case of piping
@@ -182,7 +252,7 @@ RunCommand(Command *cmd)
   }
   else
   {
-    while(p){
+    do {
       if(p->next){
         printf("Opening pipe for command: %s \n", *pl);
         // we have another command to run
@@ -198,14 +268,19 @@ RunCommand(Command *cmd)
       pid_t pid = fork();
       // debug
       //int pid = 0;
-      if(pid == 0){
-        if(p->next){
+      if(pid == 0)
+      {
+        //child
+        if(p->next != NULL)
+        {
           printf("Redirecting pipe to stdin for %s\n", *pl);
           close(fd[WRITE_END]);
           // redirect READ_END of pipe to stdin
-          dup2(0, fd[READ_END]);
+          dup2(fd[READ_END], 0);
           close(fd[READ_END]);
-        }else if(pipe_open==1){
+        }
+        else if(pipe_open==1)
+        {
           printf("Redirecting stdout to pipe for %s\n", *pl);
           printf("ASDASD");
 
@@ -215,23 +290,28 @@ RunCommand(Command *cmd)
           close(fd[WRITE_END]);
           pipe_open = 0;
         }
-        //child
+
         printf("Running command %s .. \n", *pl);
-        if(execvp(pl[0], pl) != -1){
+        if(execvp(pl[0], pl) != -1)
+        {
           printf("sucess\n");
-        }else{
-          printf("\nfailure, errno: %d\n", errno);
         }
-      }else{
-        //parent
-        if(cmd->background == 1){
-          printf("running %s in background \n", *pl);
-        }else if(pipe_open == 0){
-          wait(NULL);
+        else
+        {
+          printf("\nfailure, errno: %d\n", errno);
         }
       }
       p = p->next;
-      pl = p->pgmlist;
+      if(p){
+        pl = p->pgmlist;
+      }
+    } while(p);
+
+    //parent
+    if(cmd->background == 1){
+      printf("running %s in background \n", *pl);
+    }else {
+      wait(NULL);
     }
   }
 }
