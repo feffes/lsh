@@ -37,7 +37,6 @@
 void PrintCommand(int, Command *);
 void PrintPgm(Pgm *);
 void stripwhite(char *);
-void RunCommand(Command *);
 void RunCommandRec(Command *);
 void RunSingleCommand(Pgm *, int, int);
 
@@ -226,92 +225,5 @@ RunSingleCommand(Pgm *p, int fdin, int fdout)
       close(fd[WRITE_END]);
     }
     wait(NULL);
-  }
-}
-
-
-void
-RunCommand(Command *cmd)
-{
-  Pgm *p = cmd->pgm; // Handle several pgms in case of piping
-  char **pl = p->pgmlist;
-  char dir[80] = "";
-  int fd[2];
-  int pipe_open=0;
-
-  if(!strcmp(*pl, "cd"))
-  {
-    *pl++;
-    sprintf(dir, "%s", *pl++);
-    printf("Changing dir to: %s \n", dir);
-
-    if(chdir(dir) == -1)
-    {
-      printf("failed to change dir to %s\n", dir);
-    }
-  }
-  else
-  {
-    do {
-      if(p->next){
-        printf("Opening pipe for command: %s \n", *pl);
-        // we have another command to run
-        // create pipe
-        if(pipe(fd) == -1){
-          fprintf(stderr, "Pipe Failed\n");
-          return;
-        }else{
-          pipe_open = 1;
-        }
-      }
-      //run command
-      pid_t pid = fork();
-      // debug
-      //int pid = 0;
-      if(pid == 0)
-      {
-        //child
-        if(p->next != NULL)
-        {
-          printf("Redirecting pipe to stdin for %s\n", *pl);
-          close(fd[WRITE_END]);
-          // redirect READ_END of pipe to stdin
-          dup2(fd[READ_END], 0);
-          close(fd[READ_END]);
-        }
-        else if(pipe_open==1)
-        {
-          printf("Redirecting stdout to pipe for %s\n", *pl);
-          printf("ASDASD");
-
-          close(fd[READ_END]);
-          // redirect stdout to WRITE_END of pipe
-          dup2(fd[WRITE_END], 1);
-          close(fd[WRITE_END]);
-          pipe_open = 0;
-        }
-
-        printf("Running command %s .. \n", *pl);
-        if(execvp(pl[0], pl) != -1)
-        {
-          printf("sucess\n");
-        }
-        else
-        {
-          printf("\nfailure, errno: %d\n", errno);
-        }
-      }
-      p = p->next;
-      if(p){
-        pl = p->pgmlist;
-      }
-    } while(p);
-
-    //parent
-    if(cmd->background == 1){
-      printf("running %s in background \n", *pl);
-    }else {
-      wait(NULL);
-    }
   }
 }
