@@ -22,6 +22,7 @@
 #include <syscall.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "parse.h"
@@ -165,7 +166,20 @@ void
 RunCommandRec(Command *cmd)
 {
   Pgm *p = cmd->pgm; // Handle several pgms in case of piping
-  RunSingleCommand(p, 0, 1);
+  int in=0,out=1;
+  if(cmd->rstdin){
+
+  }
+  if(cmd->rstdout){
+    //use as output file(?)
+    //open file and use as in
+    out = open(cmd->rstdout, O_CREAT | O_APPEND | O_WRONLY);
+    //O_CREAT, create file if it doesnt exist
+    //O_APPEND, append to file
+    //O_WRONLY, write only
+  }
+
+  RunSingleCommand(p, in, out);
 }
 
 void
@@ -209,7 +223,7 @@ RunSingleCommand(Pgm *p, int fdin, int fdout)
       {
         close(fd[WRITE_END]);
         // redirect READ_END of pipe to stdin
-        dup2(fd[READ_END], 0);
+        dup2(fd[READ_END], fdin);
         close(fd[READ_END]);
       }
       //send output (stdout) to fdout
@@ -221,7 +235,7 @@ RunSingleCommand(Pgm *p, int fdin, int fdout)
       }
     }
     if(p->next){
-      RunSingleCommand(p->next, fd[READ_END], fd[WRITE_END]);
+      RunSingleCommand(p->next, fdin, fd[WRITE_END]);
       close(fd[WRITE_END]);
     }
     wait(NULL);
