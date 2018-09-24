@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "parse.h"
@@ -40,6 +41,7 @@ void PrintPgm(Pgm *);
 void stripwhite(char *);
 void RunCommandRec(Command *);
 void RunSingleCommand(Pgm *, int, int, int);
+void HandleInterrupt(int sig);
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
@@ -56,6 +58,7 @@ int main(void)
   Command cmd;
   int n;
 
+  signal(SIGINT, HandleInterrupt);
   while (!done) {
 
     char *line;
@@ -191,6 +194,7 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
   char dir[80] = "";
   int fd[2];
   int pipe_open=0;
+  int *status;
 
   if(!strcmp(*args, "cd"))
   {
@@ -242,12 +246,23 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
         printf("\nfailure, errno: %d\n", errno);
       }
     }
+
     if(p->next){
       RunSingleCommand(p->next, fdin, fd[WRITE_END], background);
       close(fd[WRITE_END]);
     }
-    if(!background){
-      wait(NULL);
+
+    if(background == 0){
+      waitpid(pid, &status, 0);
     }
+
+  }
+
+}
+void
+HandleInterrupt(int sig)
+{
+  if(sig == SIGINT){
+    printf("interrupt recieved \n");
   }
 }
