@@ -39,7 +39,7 @@ void PrintCommand(int, Command *);
 void PrintPgm(Pgm *);
 void stripwhite(char *);
 void RunCommandRec(Command *);
-void RunSingleCommand(Pgm *, int, int);
+void RunSingleCommand(Pgm *, int, int, int);
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
@@ -168,7 +168,8 @@ RunCommandRec(Command *cmd)
   Pgm *p = cmd->pgm; // Handle several pgms in case of piping
   int in=0,out=1;
   if(cmd->rstdin){
-
+    in = open(cmd->rstdin, O_RDONLY);
+    printf("using cmd->stdin \n");
   }
   if(cmd->rstdout){
     //use as output file(?)
@@ -179,11 +180,11 @@ RunCommandRec(Command *cmd)
     //O_WRONLY, write only
   }
 
-  RunSingleCommand(p, in, out);
+  RunSingleCommand(p, in, out, cmd->background);
 }
 
 void
-RunSingleCommand(Pgm *p, int fdin, int fdout)
+RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
 {
   // args[0] will be command
   char **args=p->pgmlist;
@@ -230,6 +231,8 @@ RunSingleCommand(Pgm *p, int fdin, int fdout)
         // redirect READ_END of pipe to stdin
         dup2(fd[READ_END], fdin);
         close(fd[READ_END]);
+      }else{
+        dup2(fdin, 0);
       }
       //send output (stdout) to fdout
       dup2(fdout, 1);
@@ -240,9 +243,11 @@ RunSingleCommand(Pgm *p, int fdin, int fdout)
       }
     }
     if(p->next){
-      RunSingleCommand(p->next, fdin, fd[WRITE_END]);
+      RunSingleCommand(p->next, fdin, fd[WRITE_END], background);
       close(fd[WRITE_END]);
     }
-    wait(NULL);
+    if(!background){
+      wait(NULL);
+    }
   }
 }
