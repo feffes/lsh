@@ -191,7 +191,7 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
 {
   // args[0] will be command
   char **args=p->pgmlist;
-  char dir[80] = "";
+  char *dir;
   int fd[2];
   int pipe_open=0;
   int *status;
@@ -199,7 +199,11 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
   if(!strcmp(*args, "cd"))
   {
     *args++;
-    sprintf(dir, "%s", *args++);
+    if(*args == NULL){
+      dir = getenv("HOME");
+    }else{
+      sprintf(dir, "%s", *args);
+    }
     printf("Changing dir to: %s \n", dir);
 
     if(chdir(dir) == -1)
