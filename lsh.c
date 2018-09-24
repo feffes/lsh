@@ -201,7 +201,12 @@ RunSingleCommand(Pgm *p, int fdin, int fdout)
     {
       printf("failed to change dir to %s\n", dir);
     }
-  }else{
+  }
+  else if(!strcmp(*args, "exit"))
+  {
+    close(0);
+  } else
+  {
     if(p->next){
       // we have another command to run
       // create pipe
