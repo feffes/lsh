@@ -45,7 +45,7 @@ void HandleInterrupt(int sig);
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
-const char *PATH[] = {"/usr/bin:/bin", NULL};
+char *PATH[] = {"", NULL};
 
 /*
  * Name: main
@@ -57,7 +57,7 @@ int main(void)
 {
   Command cmd;
   int n;
-
+  *PATH = getenv("PATH");
   signal(SIGINT, HandleInterrupt);
   while (!done) {
 
