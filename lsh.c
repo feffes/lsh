@@ -255,17 +255,17 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
       {
         printf("\nfailure, errno: %d\n", errno);
       }
-    }
+    }else{
 
-    if(p->next){
-      RunSingleCommand(p->next, fdin, fd[WRITE_END], background);
-      close(fd[WRITE_END]);
-    }
+      if(p->next){
+        RunSingleCommand(p->next, fdin, fd[WRITE_END], background);
+        close(fd[WRITE_END]);
+      }
 
-    if(background == 0){
-      waitpid(pid, &status, 0);
+      if(background == 0){
+        waitpid(pid, &status, 0);
+      }
     }
-
   }
 
 }
