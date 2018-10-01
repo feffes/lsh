@@ -232,6 +232,12 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
     //int pid = 0;
     if(pid == 0)
     {
+
+      if(background)
+      {
+        setpgid(0,0);
+      }
+
       //child
       if(p->next != NULL)
       {
