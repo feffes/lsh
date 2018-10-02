@@ -59,6 +59,7 @@ int main(void)
   int n;
   *PATH = getenv("PATH");
   signal(SIGINT, HandleInterrupt);
+  signal(SIGCHLD, HandleInterrupt);
   while (!done) {
 
     char *line;
@@ -172,7 +173,6 @@ RunCommandRec(Command *cmd)
   int in=0,out=1;
   if(cmd->rstdin){
     in = open(cmd->rstdin, O_RDONLY);
-    printf("using cmd->stdin \n");
   }
   if(cmd->rstdout){
     //use as output file(?)
@@ -195,27 +195,35 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
   int fd[2];
   int pipe_open=0;
   int *status;
-
+  int statuspipe[2];
+  char fstring[] = "failure";
   if(!strcmp(*args, "cd"))
   {
     *args++;
     if(*args == NULL){
       dir = getenv("HOME");
     }else{
-      sprintf(dir, "%s", *args);
+      printf("cd was called with arg: %s\n", *args);
+      dir=strdup(*args);
     }
+
     printf("Changing dir to: %s \n", dir);
 
     if(chdir(dir) == -1)
     {
       printf("failed to change dir to %s\n", dir);
     }
+    return;
   }
   else if(!strcmp(*args, "exit"))
   {
     close(0);
   } else
   {
+    if(pipe(statuspipe) == -1){
+      fprintf(stderr, "Pipe Failed\n");
+      return;
+    }
     if(p->next){
       // we have another command to run
       // create pipe
@@ -254,11 +262,18 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
       if(execvp(args[0], args) == -1)
       {
         printf("\nfailure, errno: %d\n", errno);
+        close(statuspipe[READ_END]);
+        write(statuspipe[WRITE_END], fstring, sizeof(fstring));
         exit(0);
       }
     }else{
 
       if(p->next){
+        char rbuff[80];
+        int nbytes = read(statuspipe[READ_END], rbuff, sizeof(rbuff));
+        if(!strcmp(rbuff, fstring)){
+          return;
+        }
         RunSingleCommand(p->next, fdin, fd[WRITE_END], background);
         close(fd[WRITE_END]);
       }
@@ -275,5 +290,7 @@ HandleInterrupt(int sig)
 {
   if(sig == SIGINT){
     printf("interrupt recieved \n");
+  }
+  if(sig == SIGCHLD){
   }
 }
