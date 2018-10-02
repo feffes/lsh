@@ -254,6 +254,7 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
       if(execvp(args[0], args) == -1)
       {
         printf("\nfailure, errno: %d\n", errno);
+        exit(0);
       }
     }else{
 
