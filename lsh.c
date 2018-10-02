@@ -173,6 +173,10 @@ RunCommandRec(Command *cmd)
   int in=0,out=1;
   if(cmd->rstdin){
     in = open(cmd->rstdin, O_RDONLY);
+    if(in == -1){
+      printf("file doesn't exist\n");
+      return;
+    }
   }
   if(cmd->rstdout){
     //use as output file(?)
@@ -245,7 +249,6 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
       {
         setpgid(0,0);
       }
-
       //child
       if(p->next != NULL)
       {
@@ -292,5 +295,6 @@ HandleInterrupt(int sig)
     printf("interrupt recieved \n");
   }
   if(sig == SIGCHLD){
+    wait(NULL);
   }
 }
