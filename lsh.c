@@ -207,11 +207,8 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
     if(*args == NULL){
       dir = getenv("HOME");
     }else{
-      printf("cd was called with arg: %s\n", *args);
       dir=strdup(*args);
     }
-
-    printf("Changing dir to: %s \n", dir);
 
     if(chdir(dir) == -1)
     {
@@ -227,6 +224,8 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
     if(pipe(statuspipe) == -1){
       fprintf(stderr, "Pipe Failed\n");
       return;
+    }else{
+      int retval = fcntl(statuspipe[READ_END], F_SETFL, fcntl(statuspipe[READ_END], F_GETFL) | O_NONBLOCK);
     }
     if(p->next){
       // we have another command to run
@@ -270,13 +269,13 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
         exit(0);
       }
     }else{
+      char rbuff[80];
+      int nbytes = read(statuspipe[READ_END], rbuff, sizeof(rbuff));
+      if(!strcmp(rbuff, fstring)){
+        return;
+      }
 
       if(p->next){
-        char rbuff[80];
-        int nbytes = read(statuspipe[READ_END], rbuff, sizeof(rbuff));
-        if(!strcmp(rbuff, fstring)){
-          return;
-        }
         RunSingleCommand(p->next, fdin, fd[WRITE_END], background);
         close(fd[WRITE_END]);
       }
