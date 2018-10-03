@@ -313,6 +313,11 @@ command_exists(char * cmd){
   char *s = dup;
   char *p = NULL;
   char *fullpath_cmd;
+
+  if(stat(cmd, &sb) == 0 && (sb.st_mode & S_IXOTH)){
+    return 1;
+  }
+
   do {
       p = strchr(s, ':');
       if (p != NULL) {
