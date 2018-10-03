@@ -181,7 +181,7 @@ RunCommandRec(Command *cmd)
   if(cmd->rstdout){
     //use as output file(?)
     //open file and use as in
-    out = open(cmd->rstdout, O_CREAT | O_APPEND | O_WRONLY);
+    out = open(cmd->rstdout, O_CREAT | O_APPEND | O_WRONLY, S_IRWXU);
     //O_CREAT, create file if it doesnt exist
     //O_APPEND, append to file
     //O_WRONLY, write only
@@ -253,7 +253,7 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
       {
         close(fd[WRITE_END]);
         // redirect READ_END of pipe to stdin
-        dup2(fd[READ_END], fdin);
+        dup2(fd[READ_END], 0);
         close(fd[READ_END]);
       }else{
         dup2(fdin, 0);
