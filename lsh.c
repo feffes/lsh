@@ -282,7 +282,7 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
       }
 
       if(background == 0){
-        waitpid(pid, &status, 0);
+        waitpid(pid, &status,0);
       }
     }
   }
@@ -291,10 +291,12 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
 void
 HandleInterrupt(int sig)
 {
+  int * status;
+
   if(sig == SIGINT){
     printf("interrupt recieved \n");
   }
   if(sig == SIGCHLD){
-    wait(NULL);
+    waitpid(-1, &status, WNOHANG);
   }
 }
