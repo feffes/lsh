@@ -27,6 +27,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "parse.h"
+#include <sys/stat.h>
 
 #define READ_END 0
 #define WRITE_END 1
@@ -42,6 +43,7 @@ void stripwhite(char *);
 void RunCommandRec(Command *);
 void RunSingleCommand(Pgm *, int, int, int);
 void HandleInterrupt(int sig);
+int command_exists(char *);
 
 /* When non-zero, this global means the user is done using this program. */
 int done = 0;
@@ -221,6 +223,11 @@ RunSingleCommand(Pgm *p, int fdin, int fdout, int background)
     close(0);
   } else
   {
+    if(command_exists(*args) == 0){
+      printf("command doesn't exist\n");
+      return;
+    }
+
     if(pipe(statuspipe) == -1){
       fprintf(stderr, "Pipe Failed\n");
       return;
@@ -298,4 +305,29 @@ HandleInterrupt(int sig)
   if(sig == SIGCHLD){
     waitpid(-1, &status, WNOHANG);
   }
+}
+int
+command_exists(char * cmd){
+  struct stat sb;
+  char *dup = strdup(getenv("PATH"));
+  char *s = dup;
+  char *p = NULL;
+  char *fullpath_cmd;
+  do {
+      p = strchr(s, ':');
+      if (p != NULL) {
+          p[0] = 0;
+      }
+      fullpath_cmd = strdup(s);
+      strcat(fullpath_cmd, "/");
+      strcat(fullpath_cmd, cmd);
+      if(stat(fullpath_cmd, &sb) == 0 && (sb.st_mode & S_IXOTH)){
+        return 1;
+      }
+      s = p + 1;
+  } while (p != NULL);
+  free(dup);
+
+  return 0;
+
 }
